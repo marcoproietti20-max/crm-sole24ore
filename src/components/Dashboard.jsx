@@ -1,9 +1,9 @@
 import React, { useEffect, useRef } from 'react';
-import { Chart, ArcElement, BarElement, CategoryScale, LinearScale, Tooltip, Legend } from 'chart.js';
+import { Chart, ArcElement, BarElement, BarController, DoughnutController, CategoryScale, LinearScale, Tooltip, Legend } from 'chart.js';
 import { fmtEur, fmtDate, FONTI } from '../data';
 import { FonteBadge } from './Badges';
 
-Chart.register(ArcElement, BarElement, CategoryScale, LinearScale, Tooltip, Legend);
+Chart.register(ArcElement, BarElement, BarController, DoughnutController, CategoryScale, LinearScale, Tooltip, Legend);
 
 export default function Dashboard({ contacts, deals, stages, today, setPage }) {
   const pipeRef = useRef(null);
