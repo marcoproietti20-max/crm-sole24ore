@@ -12,13 +12,49 @@ export default function Contacts({ contacts, stages, customFields, setModal, upd
   const [noteText, setNoteText] = useState('');
   const [noteFu, setNoteFu] = useState('');
   const [noteFase, setNoteFase] = useState('');
+  const [sortKey, setSortKey] = useState('');
+  const [sortDir, setSortDir] = useState('asc');
 
-  const filtered = useMemo(() => contacts.filter(c => {
-    if (q && !(c.nome + c.azienda + (c.email || '')).toLowerCase().includes(q.toLowerCase())) return false;
-    if (filterFase && c.fase !== filterFase) return false;
-    if (filterFonte && c.fonte !== filterFonte) return false;
-    return true;
-  }), [contacts, q, filterFase, filterFonte]);
+  const handleSort = (key) => {
+    if (sortKey === key) setSortDir(d => d === 'asc' ? 'desc' : 'asc');
+    else { setSortKey(key); setSortDir('asc'); }
+  };
+
+  const getLastAppt = (c) => {
+    const appts = (c.history || []).filter(h => h.type === 'appt' && h.date).sort((a, b) => b.date.localeCompare(a.date));
+    return appts[0] ? appts[0].date.split('T')[0] : '';
+  };
+  const getNextFu = (c) => {
+    const fus = (c.history || []).filter(h => h.type === 'note' && h.followup).sort((a, b) => a.followup.localeCompare(b.followup));
+    return fus[0] ? fus[0].followup : '';
+  };
+
+  const filtered = useMemo(() => {
+    let list = contacts.filter(c => {
+      if (q && !(c.nome + c.azienda + (c.email || '')).toLowerCase().includes(q.toLowerCase())) return false;
+      if (filterFase && c.fase !== filterFase) return false;
+      if (filterFonte && c.fonte !== filterFonte) return false;
+      return true;
+    });
+    if (sortKey) {
+      list = [...list].sort((a, b) => {
+        let va, vb;
+        if (sortKey === 'nome') { va = a.nome || ''; vb = b.nome || ''; }
+        else if (sortKey === 'azienda') { va = a.azienda || ''; vb = b.azienda || ''; }
+        else if (sortKey === 'fase') { va = a.fase || ''; vb = b.fase || ''; }
+        else if (sortKey === 'categoria') { va = a.categoria || ''; vb = b.categoria || ''; }
+        else if (sortKey === 'fonte') { va = a.fonte || ''; vb = b.fonte || ''; }
+        else if (sortKey === 'esito') { va = a.esito || ''; vb = b.esito || ''; }
+        else if (sortKey === 'proposta') { va = a.proposta || ''; vb = b.proposta || ''; }
+        else if (sortKey === 'ultimoApp') { va = getLastAppt(a); vb = getLastAppt(b); }
+        else if (sortKey === 'followup') { va = getNextFu(a); vb = getNextFu(b); }
+        else { va = ''; vb = ''; }
+        const cmp = va.localeCompare(vb, 'it', { numeric: true });
+        return sortDir === 'asc' ? cmp : -cmp;
+      });
+    }
+    return list;
+  }, [contacts, q, filterFase, filterFonte, sortKey, sortDir]);
 
   const allChecked = filtered.length > 0 && filtered.every(c => selectedIds.has(c.id));
 
@@ -109,17 +145,17 @@ export default function Contacts({ contacts, stages, customFields, setModal, upd
                 <th style={{ width: 32, textAlign: 'center' }}>
                   <input type="checkbox" checked={allChecked} onChange={e => toggleAll(e.target.checked)} />
                 </th>
-                <th>Nome</th>
-                <th>Azienda</th>
-                <th>Telefono</th>
-                <th>Email</th>
-                <th>Fase</th>
-                <th>Categoria</th>
-                <th>Ultimo App.</th>
-                <th>Proposta</th>
-                <th>Follow-up</th>
-                <th>Fonte</th>
-                <th>Esito</th>
+                {[
+                  ['nome','Nome'],['azienda','Azienda'],['telefono','Telefono'],
+                  ['email','Email'],['fase','Fase'],['categoria','Categoria'],
+                  ['ultimoApp','Ultimo App.'],['proposta','Proposta'],
+                  ['followup','Follow-up'],['fonte','Fonte'],['esito','Esito']
+                ].map(([key, label]) => (
+                  <th key={key} onClick={() => key !== 'telefono' && key !== 'email' ? handleSort(key) : null}
+                    style={{ cursor: key !== 'telefono' && key !== 'email' ? 'pointer' : 'default', whiteSpace: 'nowrap', userSelect: 'none' }}>
+                    {label}{sortKey === key ? (sortDir === 'asc' ? ' ↑' : ' ↓') : ''}
+                  </th>
+                ))}
                 {customFields.slice(0, 2).map(f => <th key={f.id}>{f.name}</th>)}
                 <th style={{ width: 100 }}></th>
               </tr>
