@@ -80,11 +80,27 @@ export function fmtEur(v) {
 
 export function parseDateIT(str) {
   if (!str) return '';
+  str = str.trim();
+  // Already ISO format
   if (/^\d{4}-\d{2}-\d{2}/.test(str)) return str.slice(0, 16) || str;
-  const m = str.match(/(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{2,4})/);
-  if (m) {
-    const y = m[3].length === 2 ? '20' + m[3] : m[3];
-    return `${y}-${m[2].padStart(2, '0')}-${m[1].padStart(2, '0')}`;
+  // Full date with year: DD/MM/YYYY or DD-MM-YYYY
+  const mFull = str.match(/^(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{2,4})/);
+  if (mFull) {
+    const y = mFull[3].length === 2 ? '20' + mFull[3] : mFull[3];
+    return `${y}-${mFull[2].padStart(2, '0')}-${mFull[1].padStart(2, '0')}`;
+  }
+  // Partial date without year: DD/MM or D/M — assume current or next year
+  const mPartial = str.match(/^(\d{1,2})[\/\-](\d{1,2})$/);
+  if (mPartial) {
+    const now = new Date();
+    const day = mPartial[1].padStart(2, '0');
+    const month = mPartial[2].padStart(2, '0');
+    const thisYear = now.getFullYear();
+    const candidate = `${thisYear}-${month}-${day}`;
+    // If date already passed this year, use next year
+    const candidateDate = new Date(candidate);
+    const year = candidateDate < now ? thisYear + 1 : thisYear;
+    return `${year}-${month}-${day}`;
   }
   return str;
 }
