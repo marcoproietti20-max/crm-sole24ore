@@ -1,6 +1,7 @@
 // FollowUps.jsx
 import React from 'react';
 import { fmtDate } from '../data';
+import emailjs from '@emailjs/browser';
 
 export default function FollowUps({ contacts, setModal, showToast, ejsCfg }) {
   const today = new Date().toISOString().split('T')[0];
@@ -19,7 +20,6 @@ export default function FollowUps({ contacts, setModal, showToast, ejsCfg }) {
   const sendEmail = async (f) => {
     if (!ejsCfg?.serviceId || !ejsCfg?.pubKey) { showToast('EmailJS non configurato', 'Vai in Impostazioni', 'warn'); return; }
     try {
-      const { default: emailjs } = await import('@emailjs/browser');
       await emailjs.send(ejsCfg.serviceId, ejsCfg.templateId, {
         to_email: ejsCfg.email, contact_name: f.contact.nome,
         company: f.contact.azienda || '—', note: f.note.text,
