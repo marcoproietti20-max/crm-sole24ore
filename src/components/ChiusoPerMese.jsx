@@ -1,8 +1,8 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Chart, BarElement, CategoryScale, LinearScale, Tooltip } from 'chart.js';
+import { Chart, BarElement, BarController, CategoryScale, LinearScale, Tooltip } from 'chart.js';
 import { fmtDate, fmtEur } from '../data';
 
-Chart.register(BarElement, CategoryScale, LinearScale, Tooltip);
+Chart.register(BarElement, BarController, CategoryScale, LinearScale, Tooltip);
 
 const MESI = ['Gennaio','Febbraio','Marzo','Aprile','Maggio','Giugno','Luglio','Agosto','Settembre','Ottobre','Novembre','Dicembre'];
 
