@@ -224,7 +224,7 @@ export default function App() {
     contacts, deals, stages, customFields, brand, gsCfg, ejsCfg,
     setContacts, setDeals, setStages, setCustomFields, setBrand, setGsCfg, setEjsCfg,
     saveContact, deleteContact, deleteContacts, updateContact, saveDeal, deleteDeal,
-    syncFromGoogleSheet, setModal, showToast, today,
+    syncFromGoogleSheet, setModal, showToast, today, setPage,
   };
 
   const pages = {
