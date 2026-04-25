@@ -133,29 +133,43 @@ export default function App() {
       const colExact = name => header.indexOf(name.toLowerCase().trim());
       const colPartial = names => { for (const n of names) { const i = header.findIndex(h => h.includes(n)); if (i >= 0) return i; } return -1; };
 
-      const iNome     = colExact('nome') >= 0 ? colExact('nome') : colPartial(['nome', 'name']);
-      const iCat      = colExact('categoria') >= 0 ? colExact('categoria') : colPartial(['categoria', 'category']);
-      const iEmail    = colExact('email') >= 0 ? colExact('email') : colPartial(['email', 'mail']);
-      const iTel      = colExact('telefono') >= 0 ? colExact('telefono') : colPartial(['telefono', 'tel', 'phone']);
-      const iData     = colExact('data ultimo appuntamento') >= 0 ? colExact('data ultimo appuntamento') : colPartial(['data ultimo', 'data app', 'scheduled']);
-      const iFonte    = colExact('fonte') >= 0 ? colExact('fonte') : colPartial(['fonte', 'source']);
-      const iAzienda  = colExact('azienda') >= 0 ? colExact('azienda') : colPartial(['azienda', 'studio', 'company']);
-      const iEsitoApp = colExact('esito appuntamento') >= 0 ? colExact('esito appuntamento') : colPartial(['esito appuntamento']);
-      const iProposta = colExact('proposta') >= 0 ? colExact('proposta') : colPartial(['proposta']);
-      const iEsito    = colExact('esito') >= 0 ? colExact('esito') : colPartial(['esito']);
-      const iNote     = colExact('note app.to') >= 0 ? colExact('note app.to') : colPartial(['note app', 'note']);
-      const iFollowup = colExact('follow up') >= 0 ? colExact('follow up') : colPartial(['follow up', 'follow-up', 'ricontattare']);
+      // Exact mapping for new sheet structure:
+      // Nome, Categoria, Email, Telefono, Azienda, Fonte,
+      // Data appuntamento, Stato Appuntamento, Proposta Inviata, Esito, Follow Up, Note App.to
+      const iNome        = colExact('nome')                >= 0 ? colExact('nome')                : colPartial(['nome', 'name']);
+      const iCat         = colExact('categoria')           >= 0 ? colExact('categoria')           : colPartial(['categoria']);
+      const iEmail       = colExact('email')               >= 0 ? colExact('email')               : colPartial(['email', 'mail']);
+      const iTel         = colExact('telefono')            >= 0 ? colExact('telefono')             : colPartial(['telefono', 'tel', 'phone']);
+      const iAzienda     = colExact('azienda')             >= 0 ? colExact('azienda')             : colPartial(['azienda', 'studio', 'company']);
+      const iFonte       = colExact('fonte')               >= 0 ? colExact('fonte')               : colPartial(['fonte', 'source']);
+      const iData        = colExact('data appuntamento')   >= 0 ? colExact('data appuntamento')   : colPartial(['data appu', 'data app', 'scheduled']);
+      const iStatoAppt   = colExact('stato appuntamento')  >= 0 ? colExact('stato appuntamento')  : colPartial(['stato appu', 'stato app']);
+      const iPropInviata = colExact('proposta inviata')    >= 0 ? colExact('proposta inviata')    : colPartial(['proposta inviata', 'proposta']);
+      const iEsito       = colExact('esito')               >= 0 ? colExact('esito')               : colPartial(['esito']);
+      const iFollowup    = colExact('follow up')           >= 0 ? colExact('follow up')           : colPartial(['follow up', 'follow-up', 'ricontattare']);
+      const iNote        = colExact('note app.to')         >= 0 ? colExact('note app.to')         : colPartial(['note app', 'note']);
 
       const g = (row, idx) => idx >= 0 ? (row[idx] || '').trim() : '';
+
+      // Fase dalla colonna Esito
       const faseMap = {
-        'ok': 'Chiuso OK', 'chiuso ok': 'Chiuso OK',
-        'ko': 'Chiuso KO', 'chiuso ko': 'Chiuso KO', 'ko momentaneo': 'Chiuso KO',
-        'in trattativa': 'In valutazione', 'in valutazione': 'In valutazione',
-        'proposta': 'Proposta', 'appuntamento': 'Appuntamento', 'lead': 'Lead',
+        'chiuso ok': 'Chiuso OK', 'ok': 'Chiuso OK',
+        'chiuso ko': 'Chiuso KO', 'ko': 'Chiuso KO',
+        'in valutazione': 'In valutazione',
+        'proposta': 'Proposta',
+        'appuntamento': 'Appuntamento',
+        'lead': 'Lead',
       };
-      const propostaMap = {
-        'offerta inviata': 'Offerta Inviata', 'k.o': 'K.O', 'ko': 'K.O',
-        'non interessato': 'Non interessato', 'non classificato': 'Non classificato',
+
+      // Stato appuntamento dalla colonna Stato Appuntamento
+      const statoMap = {
+        'svolto': 'Svolto',
+        'non si è presentato': 'Non effettuato',
+        'non si e presentato': 'Non effettuato',
+        'non effettuato': 'Non effettuato',
+        'da rifissare': 'Da rifissare',
+        'spostato': 'Da rifissare',
+        'programmato': 'Programmato',
       };
 
       let imported = 0, skipped = 0;
@@ -174,25 +188,26 @@ export default function App() {
           );
           if (exists) { skipped++; continue; }
 
-          const esitoRaw = g(row, iEsitoApp).toLowerCase() || g(row, iEsito).toLowerCase();
-          const esito = esitoRaw.includes('positiv') ? 'Positivo' : esitoRaw.includes('negativ') ? 'Negativo' : esitoRaw.includes('attesa') ? 'In attesa' : '';
-          const faseRaw = colPartial(['esito trattativa', 'trattativa']) >= 0 ? g(row, colPartial(['esito trattativa', 'trattativa'])).toLowerCase() : '';
-          const fase = faseMap[faseRaw] || stages[1]?.name || stages[0]?.name || 'Appuntamento';
-          const propostaRaw = g(row, iProposta).toLowerCase();
-          const proposta = propostaMap[propostaRaw] || g(row, iProposta) || '';
+          const esitoRaw    = g(row, iEsito).toLowerCase();
+          const fase        = faseMap[esitoRaw] || stages[1]?.name || stages[0]?.name || 'Appuntamento';
+
+          // Proposta Inviata (Sì/No) → proposta field
+          const propInviataRaw = g(row, iPropInviata).toLowerCase();
+          const proposta = propInviataRaw === 'sì' || propInviataRaw === 'si' || propInviataRaw === 's' ? 'Offerta Inviata' : '';
+
+          // Stato appuntamento
+          const statoRaw = g(row, iStatoAppt).toLowerCase();
+          const statoAppt = statoMap[statoRaw] || (statoRaw ? 'Svolto' : 'Programmato');
 
           const history = [];
-          const dataRaw = g(row, iData);
-          const noteRaw = g(row, iNote);
+          const dataRaw  = g(row, iData);
+          const noteRaw  = g(row, iNote);
           const followup = parseDateIT(g(row, iFollowup));
           const todayStr = new Date().toISOString().split('T')[0];
 
           if (dataRaw) {
             const apptDate = parseDateIT(dataRaw) || dataRaw;
-            const apptDs = apptDate.split('T')[0];
-            const isPast = apptDs < todayStr;
-            const stato = isPast ? (esito === 'Negativo' ? 'Non effettuato' : 'Svolto') : 'Programmato';
-            history.push({ id: genId(), type: 'appt', date: apptDate, stato, esito: noteRaw || '' });
+            history.push({ id: genId(), type: 'appt', date: apptDate, stato: statoAppt, esito: noteRaw || '' });
           }
           if (followup) {
             history.push({ id: genId(), type: 'note', date: todayStr, text: noteRaw || 'Follow-up da importazione', followup });
@@ -202,7 +217,8 @@ export default function App() {
             id: genId(), nome, azienda: g(row, iAzienda), email,
             telefono: g(row, iTel), categoria: g(row, iCat),
             fase, fonte: g(row, iFonte) || 'Calendly',
-            esito, proposta, customData: {}, history
+            esito: esitoRaw.includes('ok') ? 'Positivo' : esitoRaw.includes('ko') ? 'Negativo' : 'In attesa',
+            proposta, customData: {}, history
           });
           imported++;
         }
