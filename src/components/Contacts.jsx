@@ -7,6 +7,8 @@ export default function Contacts({ contacts, stages, customFields, setModal, upd
   const [q, setQ] = useState('');
   const [filterFase, setFilterFase] = useState('');
   const [filterFonte, setFilterFonte] = useState('');
+  const [filterProposta, setFilterProposta] = useState('');
+  const [filterEsito, setFilterEsito] = useState('');
   const [selectedIds, setSelectedIds] = useState(new Set());
   const [selectedCid, setSelectedCid] = useState(null);
   const [noteText, setNoteText] = useState('');
@@ -34,6 +36,8 @@ export default function Contacts({ contacts, stages, customFields, setModal, upd
       if (q && !(c.nome + c.azienda + (c.email || '')).toLowerCase().includes(q.toLowerCase())) return false;
       if (filterFase && c.fase !== filterFase) return false;
       if (filterFonte && c.fonte !== filterFonte) return false;
+      if (filterProposta && c.proposta !== filterProposta) return false;
+      if (filterEsito && c.esito !== filterEsito) return false;
       return true;
     });
     if (sortKey) {
@@ -54,7 +58,7 @@ export default function Contacts({ contacts, stages, customFields, setModal, upd
       });
     }
     return list;
-  }, [contacts, q, filterFase, filterFonte, sortKey, sortDir]);
+  }, [contacts, q, filterFase, filterFonte, filterProposta, filterEsito, sortKey, sortDir]);
 
   const allChecked = filtered.length > 0 && filtered.every(c => selectedIds.has(c.id));
 
@@ -108,6 +112,14 @@ export default function Contacts({ contacts, stages, customFields, setModal, upd
           <select className="form-control" style={{ width: 150 }} value={filterFonte} onChange={e => setFilterFonte(e.target.value)}>
             <option value="">Tutte le fonti</option>
             {FONTI.map(f => <option key={f.name} value={f.name}>{f.icon} {f.name}</option>)}
+          </select>
+          <select className="form-control" style={{ width: 150 }} value={filterProposta} onChange={e => setFilterProposta(e.target.value)}>
+            <option value="">Tutte le proposte</option>
+            {PROPOSTE.map(p => <option key={p.name} value={p.name}>{p.name}</option>)}
+          </select>
+          <select className="form-control" style={{ width: 130 }} value={filterEsito} onChange={e => setFilterEsito(e.target.value)}>
+            <option value="">Tutti gli esiti</option>
+            {ESITI.map(e => <option key={e.name} value={e.name}>{e.name}</option>)}
           </select>
         </div>
 
