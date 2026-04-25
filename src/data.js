@@ -17,16 +17,14 @@ export const CATEGORIE = [
 ];
 
 export const ESITI = [
-  { name: 'Positivo',  color: '#639922' },
-  { name: 'In attesa', color: '#E07B1A' },
-  { name: 'Negativo',  color: '#A32D2D' },
+  { name: 'Positivo',      color: '#639922' },
+  { name: 'In valutazione',color: '#E07B1A' },
+  { name: 'Negativo',      color: '#A32D2D' },
 ];
 
 export const PROPOSTE = [
-  { name: 'Offerta Inviata',  color: '#639922' },
-  { name: 'Non classificato', color: '#888888' },
-  { name: 'Non interessato',  color: '#A32D2D' },
-  { name: 'K.O',              color: '#791F1F' },
+  { name: 'Offerta Inviata', color: '#639922' },
+  { name: 'Non inviata',     color: '#888888' },
 ];
 
 export const STATI_APPT = [
