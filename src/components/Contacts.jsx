@@ -183,11 +183,11 @@ export default function Contacts({ contacts, stages, customFields, setModal, upd
                     <td><StageBadge name={c.fase} stages={stages} /></td>
                     <td className="fs-12 text-muted">{c.categoria || '—'}</td>
                     <td className="fs-12">
-                      {lastDs ? <span style={{ color: lastDs < today ? '#A32D2D' : '#185FA5', fontWeight: 500 }}>{fmtDate(lastDs, { day: '2-digit', month: 'short', year: '2-digit' })}</span> : <span className="text-muted">—</span>}
+                      {lastDs ? <span style={{ color: lastDs < today ? '#A32D2D' : '#185FA5', fontWeight: 500 }}>{fmtDate(lastDs, { day: '2-digit', month: 'short', year: 'numeric' })}</span> : <span className="text-muted">—</span>}
                     </td>
                     <td><PropostaBadge name={c.proposta} /></td>
                     <td className="fs-11">
-                      {fu ? <span style={{ color: fu.followup < today ? '#A32D2D' : fu.followup === today ? '#E07B1A' : '#185FA5', fontWeight: 500 }}>{fmtDate(fu.followup, { day: '2-digit', month: 'short' })}</span> : <span className="text-muted">—</span>}
+                      {fu ? <span style={{ color: fu.followup < today ? '#A32D2D' : fu.followup === today ? '#E07B1A' : '#185FA5', fontWeight: 500 }}>{fmtDate(fu.followup, { day: '2-digit', month: 'short', year: 'numeric' })}</span> : <span className="text-muted">—</span>}
                     </td>
                     <td><FonteBadge name={c.fonte} /></td>
                     <td><EsitoBadge name={c.esito} /></td>
