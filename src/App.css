@@ -1,5 +1,5 @@
 /* ============================================================
-   CRM IL SOLE 24 ORE — Design System
+   CRM IL SOLE 24 ORE â€” Design System
    ============================================================ */
 :root {
   --accent: #c8102e;
@@ -290,7 +290,7 @@ input[type="checkbox"] { cursor: pointer; width: 15px; height: 15px; accent-colo
 a { color: #185FA5; }
 
 /* ============================================================
-   RESPONSIVE — Tablet & Mobile
+   RESPONSIVE â€” Tablet & Mobile
    ============================================================ */
 
 /* Sidebar collapsible */
@@ -352,7 +352,7 @@ a { color: #185FA5; }
   .modal-box { width: 100vw; max-width: 100vw; max-height: 100vh; border-radius: 0; margin: 0; }
 }
 
-/* Table responsive — always scrollable */
+/* Table responsive â€” always scrollable */
 .table-wrap { overflow-x: auto; -webkit-overflow-scrolling: touch; }
 .crm-table { min-width: 900px; font-size: 12px; }
 .crm-table th, .crm-table td { padding: 9px 10px; }
