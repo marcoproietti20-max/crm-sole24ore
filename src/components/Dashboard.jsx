@@ -1,142 +1,211 @@
 import React, { useEffect, useRef } from 'react';
 import { Chart, ArcElement, BarElement, BarController, DoughnutController, CategoryScale, LinearScale, Tooltip, Legend } from 'chart.js';
-import { fmtEur, fmtDate, FONTI } from '../data';
-import { FonteBadge } from './Badges';
+import { fmtEur, fmtDate, FONTI, getImportoFatturato, getImportoPreventivato } from '../data';
+import { FonteBadge, StageBadge } from './Badges';
 
 Chart.register(ArcElement, BarElement, BarController, DoughnutController, CategoryScale, LinearScale, Tooltip, Legend);
 
-export default function Dashboard({ contacts, deals, stages, today, setPage }) {
-  const pipeRef = useRef(null);
-  const valRef  = useRef(null);
-  const pipeChart = useRef(null);
-  const valChart  = useRef(null);
+const MESI_SHORT = ['Gen','Feb','Mar','Apr','Mag','Giu','Lug','Ago','Set','Ott','Nov','Dic'];
+
+export default function Dashboard({ contacts, stages, today, navigateTo }) {
+  const barRef = useRef(null);
+  const doughRef = useRef(null);
+  const barChart = useRef(null);
+  const doughChart = useRef(null);
 
   const activeStages = stages.filter(s => !s.isKo);
-  const cnt = {}, val = {};
-  stages.forEach(s => { cnt[s.name] = 0; val[s.name] = 0; });
-  deals.forEach(d => { cnt[d.fase] = (cnt[d.fase] || 0) + 1; val[d.fase] = (val[d.fase] || 0) + d.valore; });
-
   const wonStage = activeStages[activeStages.length - 1];
-  const closedVal = wonStage ? (val[wonStage.name] || 0) : 0;
-  const totalVal  = deals.reduce((s, d) => s + (d.valore || 0), 0);
-  const openDeals = deals.filter(d => !stages.find(s => s.name === d.fase && (s.isKo || s === wonStage))).length;
+  const koStages = stages.filter(s => s.isKo);
 
-  const urgentFU = contacts.reduce((n, c) =>
-    n + (c.history || []).filter(h => h.type === 'note' && h.followup && h.followup <= today).length, 0);
+  // Metrics
+  const openContacts = contacts.filter(c => !stages.find(s => s.name === c.fase && s.isKo) && c.fase !== wonStage?.name);
+  const chiusiOK = contacts.filter(c => c.fase === wonStage?.name);
+  const chiusiKO = contacts.filter(c => koStages.some(s => s.name === c.fase));
 
-  const daRifissare = contacts.reduce((n, c) =>
-    n + (c.history || []).filter(h => h.type === 'appt' && (h.stato === 'Da rifissare' || h.stato === 'Non effettuato')).length, 0);
+  const totalPreventivato = openContacts.reduce((s,c) => s + getImportoPreventivato(c), 0);
+  const totalFatturato = chiusiOK.reduce((s,c) => s + getImportoFatturato(c), 0);
 
-  useEffect(() => {
-    if (!pipeRef.current || !valRef.current) return;
-    if (pipeChart.current) pipeChart.current.destroy();
-    if (valChart.current)  valChart.current.destroy();
+  // Current month fatturato
+  const curMonth = new Date().toISOString().slice(0,7);
+  const fatturatoCurMese = chiusiOK.filter(c => {
+    const d = c.contratto?.dataInizio || '';
+    return d.startsWith(curMonth);
+  }).reduce((s,c) => s + getImportoFatturato(c), 0);
 
-    pipeChart.current = new Chart(pipeRef.current, {
-      type: 'bar',
-      data: {
-        labels: activeStages.map(s => s.name),
-        datasets: [{ label: 'Trattative', data: activeStages.map(s => cnt[s.name] || 0), backgroundColor: activeStages.map(s => s.color + '99'), borderColor: activeStages.map(s => s.color), borderWidth: 1.5, borderRadius: 5 }]
-      },
-      options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } }, scales: { y: { ticks: { stepSize: 1 }, grid: { color: 'rgba(0,0,0,0.05)' } }, x: { grid: { display: false } } } }
-    });
+  // YTD fatturato
+  const curYear = new Date().getFullYear().toString();
+  const fatturatoAnno = chiusiOK.filter(c => {
+    const d = c.contratto?.dataInizio || '';
+    return d.startsWith(curYear);
+  }).reduce((s,c) => s + getImportoFatturato(c), 0);
 
-    valChart.current = new Chart(valRef.current, {
-      type: 'doughnut',
-      data: {
-        labels: activeStages.map(s => s.name),
-        datasets: [{ data: activeStages.map(s => val[s.name] || 0), backgroundColor: activeStages.map(s => s.color), borderWidth: 0 }]
-      },
-      options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { position: 'bottom', labels: { boxWidth: 10, font: { size: 11 } } } } }
-    });
+  // Urgent follow-ups
+  const urgentFU = contacts.reduce((n,c) =>
+    n+(c.history||[]).filter(h=>h.type==='note'&&h.followup&&h.followup<=today).length, 0);
+  const daRifissare = contacts.reduce((n,c) =>
+    n+(c.history||[]).filter(h=>h.type==='appt'&&(h.stato==='Da rifissare'||h.stato==='Non si è presentato'||h.stato==='Non effettuato')).length, 0);
 
-    return () => { pipeChart.current?.destroy(); valChart.current?.destroy(); };
-  }, [deals, stages]);
+  // Monthly fatturato for bar chart (last 12 months)
+  const monthlyFatturato = Array(12).fill(0);
+  chiusiOK.forEach(c => {
+    const d = c.contratto?.dataInizio;
+    if (!d) return;
+    const mIdx = new Date(d).getMonth();
+    const yr = new Date(d).getFullYear().toString();
+    if (yr === curYear) monthlyFatturato[mIdx] += getImportoFatturato(c);
+  });
 
-  // Follow-ups urgenti
-  const urgentList = [];
-  contacts.forEach(c => (c.history || []).forEach(h => {
-    if (h.type === 'note' && h.followup && h.followup <= today) {
-      urgentList.push({ contact: c, note: h, status: h.followup < today ? 'scaduto' : 'oggi' });
-    }
-  }));
-  urgentList.sort((a, b) => a.note.followup.localeCompare(b.note.followup));
+  // Stage breakdown
+  const stageCnt = {};
+  activeStages.forEach(s => stageCnt[s.name] = 0);
+  contacts.forEach(c => { if (stageCnt[c.fase] !== undefined) stageCnt[c.fase]++; });
 
   // Fonte breakdown
   const fonteCnt = {};
   FONTI.forEach(f => fonteCnt[f.name] = 0);
-  contacts.forEach(c => { if (c.fonte) fonteCnt[c.fonte] = (fonteCnt[c.fonte] || 0) + 1; });
+  contacts.forEach(c => { if (c.fonte) fonteCnt[c.fonte] = (fonteCnt[c.fonte]||0)+1; });
+
+  useEffect(() => {
+    if (!barRef.current || !doughRef.current) return;
+    if (barChart.current) barChart.current.destroy();
+    if (doughChart.current) doughChart.current.destroy();
+
+    const accent = getComputedStyle(document.documentElement).getPropertyValue('--accent').trim()||'#c8102e';
+
+    barChart.current = new Chart(barRef.current, {
+      type:'bar',
+      data:{labels:MESI_SHORT,datasets:[{label:'Fatturato €',data:monthlyFatturato,backgroundColor:accent+'99',borderColor:accent,borderWidth:1.5,borderRadius:5}]},
+      options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false},tooltip:{callbacks:{label:ctx=>' '+fmtEur(ctx.parsed.y)}}},scales:{y:{ticks:{callback:v=>fmtEur(v)},grid:{color:'rgba(0,0,0,0.05)'}},x:{grid:{display:false}}}}
+    });
+    doughChart.current = new Chart(doughRef.current, {
+      type:'doughnut',
+      data:{labels:activeStages.map(s=>s.name),datasets:[{data:activeStages.map(s=>stageCnt[s.name]||0),backgroundColor:activeStages.map(s=>s.color),borderWidth:0}]},
+      options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{position:'bottom',labels:{boxWidth:10,font:{size:11}}}}}
+    });
+    return () => { barChart.current?.destroy(); doughChart.current?.destroy(); };
+  }, [contacts, stages]);
+
+  // Urgent list
+  const urgentList = [];
+  contacts.forEach(c => (c.history||[]).forEach(h => {
+    if (h.type==='note'&&h.followup&&h.followup<=today)
+      urgentList.push({contact:c,note:h,status:h.followup<today?'scaduto':'oggi'});
+  }));
+  urgentList.sort((a,b)=>a.note.followup.localeCompare(b.note.followup));
+
+  const MetricCard = ({label,value,sub,color,onClick,alert}) => (
+    <div className="metric-card" onClick={onClick} style={{cursor:onClick?'pointer':'default',transition:'transform 0.1s'}}
+      onMouseEnter={e=>{if(onClick)e.currentTarget.style.transform='translateY(-2px)'}}
+      onMouseLeave={e=>e.currentTarget.style.transform=''}>
+      <div className="metric-label">{label}</div>
+      <div className={`metric-value${alert?' metric-alert':''}`} style={color?{color}:{}}>{value}</div>
+      {sub&&<div className="metric-sub">{sub}</div>}
+      {onClick&&<div style={{fontSize:10,color:'var(--text3)',marginTop:4}}>Clicca per dettaglio →</div>}
+    </div>
+  );
 
   return (
     <>
       <div className="topbar">
         <span className="page-title">Dashboard</span>
-        <span className="text-muted fs-12">{new Date().toLocaleDateString('it-IT', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })}</span>
+        <span className="text-muted fs-12">{new Date().toLocaleDateString('it-IT',{weekday:'long',day:'numeric',month:'long',year:'numeric'})}</span>
       </div>
       <div className="content">
-        {/* Metrics */}
-        <div className="metric-grid">
-          <div className="metric-card"><div className="metric-label">Trattative aperte</div><div className="metric-value">{openDeals}</div><div className="metric-sub">in pipeline</div></div>
-          <div className="metric-card"><div className="metric-label">Valore pipeline</div><div className="metric-value">{fmtEur(totalVal - closedVal)}</div><div className="metric-sub">potenziale</div></div>
-          <div className="metric-card"><div className="metric-label">Chiuso OK</div><div className="metric-value metric-green">{fmtEur(closedVal)}</div><div className="metric-sub">realizzato</div></div>
-          <div className="metric-card"><div className="metric-label">Follow-up urgenti</div><div className={`metric-value${urgentFU ? ' metric-alert' : ''}`}>{urgentFU}</div><div className="metric-sub">oggi o scaduti</div></div>
-        </div>
 
-        {/* Alert appuntamenti */}
-        {daRifissare > 0 && (
-          <div style={{ background: '#FAEEDA', border: '1px solid #FAC775', borderRadius: 'var(--radius)', padding: '10px 14px', marginBottom: 16, display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: 13 }}>
-            <span style={{ color: '#633806', fontWeight: 600 }}>🔄 {daRifissare} appuntamenti da gestire (Da rifissare / Non effettuati)</span>
-            <button className="btn btn-sm" style={{ color: '#E07B1A', borderColor: '#E07B1A' }} onClick={() => setPage('appointments')}>Vedi →</button>
+        {/* Alert bar */}
+        {(urgentFU>0||daRifissare>0) && (
+          <div style={{display:'flex',gap:10,marginBottom:16,flexWrap:'wrap'}}>
+            {urgentFU>0&&<div style={{flex:1,background:'#FCEBEB',border:'1px solid #F7C1C1',borderRadius:'var(--radius)',padding:'9px 14px',display:'flex',justifyContent:'space-between',alignItems:'center',cursor:'pointer'}} onClick={()=>navigateTo('followups')}>
+              <span style={{color:'#791F1F',fontWeight:600,fontSize:13}}>🔔 {urgentFU} follow-up urgenti</span>
+              <span style={{fontSize:11,color:'#791F1F'}}>Vedi →</span>
+            </div>}
+            {daRifissare>0&&<div style={{flex:1,background:'#FAEEDA',border:'1px solid #FAC775',borderRadius:'var(--radius)',padding:'9px 14px',display:'flex',justifyContent:'space-between',alignItems:'center',cursor:'pointer'}} onClick={()=>navigateTo('appointments')}>
+              <span style={{color:'#633806',fontWeight:600,fontSize:13}}>🔄 {daRifissare} appuntamenti da gestire</span>
+              <span style={{fontSize:11,color:'#633806'}}>Vedi →</span>
+            </div>}
           </div>
         )}
 
+        {/* Metrics row 1 */}
+        <div className="metric-grid" style={{marginBottom:12}}>
+          <MetricCard label="Trattative aperte" value={openContacts.length} sub="in pipeline" onClick={()=>navigateTo('pipeline')}/>
+          <MetricCard label="Totale preventivato" value={fmtEur(totalPreventivato)} sub="trattative attive" onClick={()=>navigateTo('contacts',{fase:'aperto'})}/>
+          <MetricCard label="Fatturato mese" value={fmtEur(fatturatoCurMese)} sub={new Date().toLocaleDateString('it-IT',{month:'long',year:'numeric'})} color="#3B6D11" onClick={()=>navigateTo('chiuso')}/>
+          <MetricCard label="Fatturato anno" value={fmtEur(fatturatoAnno)} sub={curYear} color="#3B6D11" onClick={()=>navigateTo('chiuso')}/>
+        </div>
+
+        {/* Metrics row 2 */}
+        <div className="metric-grid" style={{marginBottom:20}}>
+          <MetricCard label="Chiuso OK" value={chiusiOK.length} sub={fmtEur(totalFatturato)+' fatturati'} color="#3B6D11" onClick={()=>navigateTo('chiuso')}/>
+          <MetricCard label="Chiuso KO" value={chiusiKO.length} sub="trattative perse" onClick={()=>navigateTo('archivio')}/>
+          <MetricCard label="Follow-up urgenti" value={urgentFU} sub="oggi o scaduti" alert={urgentFU>0} onClick={()=>navigateTo('followups')}/>
+          <MetricCard label="Contatti totali" value={contacts.length} sub="in rubrica" onClick={()=>navigateTo('contacts')}/>
+        </div>
+
         {/* Charts */}
         <div className="charts-grid">
-          <div className="card card-0"><div className="card-title">Trattative per fase</div><div style={{ position: 'relative', height: 210 }}><canvas ref={pipeRef} /></div></div>
-          <div className="card card-0"><div className="card-title">Valore pipeline (€)</div><div style={{ position: 'relative', height: 210 }}><canvas ref={valRef} /></div></div>
+          <div className="card card-0">
+            <div className="card-title">Fatturato mensile {curYear} (€)</div>
+            <div style={{position:'relative',height:210}}><canvas ref={barRef}/></div>
+          </div>
+          <div className="card card-0">
+            <div className="card-title">Pipeline per fase</div>
+            <div style={{position:'relative',height:210}}><canvas ref={doughRef}/></div>
+          </div>
         </div>
-        <div style={{ height: 16 }} />
+        <div style={{height:16}}/>
+
+        {/* Stage breakdown clickable */}
+        <div className="card">
+          <div className="card-title">Trattative per fase</div>
+          <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fill,minmax(140px,1fr))',gap:8}}>
+            {activeStages.map(s=>(
+              <div key={s.id} onClick={()=>navigateTo('contacts',{fase:s.name})}
+                style={{background:s.color+'11',border:`1px solid ${s.color}44`,borderRadius:'var(--radius)',padding:'10px 12px',cursor:'pointer',transition:'transform 0.1s'}}
+                onMouseEnter={e=>e.currentTarget.style.transform='translateY(-2px)'}
+                onMouseLeave={e=>e.currentTarget.style.transform=''}>
+                <div style={{fontSize:11,color:s.color,fontWeight:700,textTransform:'uppercase',letterSpacing:'0.05em',marginBottom:4}}>{s.name}</div>
+                <div style={{fontSize:22,fontWeight:700,color:s.color}}>{stageCnt[s.name]||0}</div>
+                <div style={{fontSize:10,color:'var(--text3)',marginTop:2}}>Clicca per vedere →</div>
+              </div>
+            ))}
+          </div>
+        </div>
 
         {/* Follow-up urgenti */}
         <div className="card">
-          <div className="card-title">Follow-up urgenti</div>
-          {urgentList.length === 0 ? <div className="empty" style={{ padding: '16px 0' }}>Nessun follow-up urgente</div> :
-            urgentList.slice(0, 6).map((f, i) => (
-              <div key={i} className={`fu-alert ${f.status}`}>
-                <div style={{ flex: 1 }}>
-                  <div className="fw-600">{f.contact.nome} <span className="badge" style={{ fontSize: 10, background: f.status === 'scaduto' ? '#FCEBEB' : '#FAEEDA', color: f.status === 'scaduto' ? '#791F1F' : '#633806' }}>{f.status === 'scaduto' ? 'Scaduto' : 'Oggi'}</span></div>
-                  <div className="text-muted fs-12">{f.contact.azienda} — {(f.note.text || '').slice(0, 60)}{f.note.text?.length > 60 ? '...' : ''}</div>
+          <div className="card-title" style={{display:'flex',justifyContent:'space-between'}}>
+            Follow-up urgenti
+            {urgentList.length>0&&<button className="btn btn-sm" onClick={()=>navigateTo('followups')}>Vedi tutti →</button>}
+          </div>
+          {urgentList.length===0?<div className="empty" style={{padding:'14px 0'}}>Nessun follow-up urgente</div>:
+            urgentList.slice(0,5).map((f,i)=>(
+              <div key={i} className={`fu-alert ${f.status}`} style={{cursor:'pointer'}} onClick={()=>navigateTo('contacts',{id:f.contact.id})}>
+                <div style={{flex:1}}>
+                  <div className="fw-600">{f.contact.nome} <span className="badge" style={{fontSize:10,background:f.status==='scaduto'?'#FCEBEB':'#FAEEDA',color:f.status==='scaduto'?'#791F1F':'#633806'}}>{f.status==='scaduto'?'Scaduto':'Oggi'}</span></div>
+                  <div className="text-muted fs-12">{f.contact.azienda} — {(f.note.text||'').slice(0,60)}</div>
                 </div>
+                <span style={{fontSize:11,color:'var(--text3)'}}>{fmtDate(f.note.followup,{day:'2-digit',month:'short',year:'numeric'})}</span>
               </div>
             ))
           }
         </div>
 
-        {/* Fonte charts */}
-        <div className="charts-grid">
-          <div className="card card-0">
-            <div className="card-title">Contatti per fonte</div>
-            {FONTI.filter(f => fonteCnt[f.name] > 0).map(f => (
-              <div key={f.name} style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8 }}>
-                <FonteBadge name={f.name} />
-                <div style={{ flex: 1, background: 'var(--bg3)', borderRadius: 4, height: 8, overflow: 'hidden' }}>
-                  <div style={{ width: `${Math.max(4, fonteCnt[f.name] / Math.max(1, contacts.length) * 100)}%`, background: f.color, height: '100%', borderRadius: 4 }} />
-                </div>
-                <span className="fs-12 text-muted" style={{ minWidth: 20, textAlign: 'right' }}>{fonteCnt[f.name]}</span>
+        {/* Fonte breakdown */}
+        <div className="card card-0">
+          <div className="card-title">Contatti per fonte</div>
+          {FONTI.filter(f=>fonteCnt[f.name]>0).map(f=>(
+            <div key={f.name} style={{display:'flex',alignItems:'center',gap:8,marginBottom:9,cursor:'pointer'}} onClick={()=>navigateTo('contacts',{fonte:f.name})}>
+              <FonteBadge name={f.name}/>
+              <div style={{flex:1,background:'var(--bg3)',borderRadius:4,height:8,overflow:'hidden'}}>
+                <div style={{width:`${Math.max(4,fonteCnt[f.name]/Math.max(1,contacts.length)*100)}%`,background:f.color,height:'100%',borderRadius:4}}/>
               </div>
-            ))}
-            {FONTI.every(f => !fonteCnt[f.name]) && <div className="empty" style={{ padding: '12px 0' }}>Nessun dato</div>}
-          </div>
-          <div className="card card-0">
-            <div className="card-title">Ultimi contatti</div>
-            {contacts.slice(-5).reverse().map(c => (
-              <div key={c.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '7px 0', borderBottom: '1px solid var(--border)' }}>
-                <div><div className="fw-600 fs-12">{c.nome}</div><div className="text-muted" style={{ fontSize: 11 }}>{c.categoria}</div></div>
-                <FonteBadge name={c.fonte} />
-              </div>
-            ))}
-          </div>
+              <span className="fs-12 text-muted" style={{minWidth:24,textAlign:'right'}}>{fonteCnt[f.name]}</span>
+            </div>
+          ))}
+          {FONTI.every(f=>!fonteCnt[f.name])&&<div className="empty" style={{padding:'12px 0'}}>Nessun dato</div>}
         </div>
+
       </div>
     </>
   );
