@@ -66,6 +66,7 @@ function ContactModal({contact,stages,customFields,onSave,onDelete,onClose}){
     fonte:c.fonte||'',categoria:c.categoria||'',
     esito:c.esito||'',proposta:c.proposta||'',
     importoProposta:c.importoProposta||0,
+    dataChiusura:c.dataChiusura||'',
     customData:c.customData||{},history:c.history||[],
     contratto:c.contratto||null,
   });
@@ -123,6 +124,13 @@ function ContactModal({contact,stages,customFields,onSave,onDelete,onClose}){
             <div className="form-group"><label className="form-label">Importo proposta (€)</label>
               <input className="form-control" type="number" value={form.importoProposta} onChange={e=>set('importoProposta',e.target.value)} placeholder="0"/>
             </div>
+          </div>
+          <div className="form-row">
+            <div className="form-group"><label className="form-label">Data chiusura</label>
+              <input className="form-control" type="date" value={form.dataChiusura||''} onChange={e=>set('dataChiusura',e.target.value)}/>
+              <div style={{fontSize:11,color:'var(--text3)',marginTop:3}}>Usata per "Chiuso per mese" e fatturato in dashboard</div>
+            </div>
+            <div className="form-group"/>
           </div>
           {customFields.length>0&&(
             <div style={{borderTop:'1px solid var(--border)',paddingTop:14,marginTop:4}}>

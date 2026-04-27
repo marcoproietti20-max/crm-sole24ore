@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Chart, BarElement, BarController, CategoryScale, LinearScale, Tooltip } from 'chart.js';
-import { fmtDate, fmtEur, getImportoFatturato } from '../data';
+import { fmtDate, fmtEur, getImportoFatturato, getImportoPreventivato, getDataChiusura } from '../data';
 
 Chart.register(BarElement, BarController, CategoryScale, LinearScale, Tooltip);
 
@@ -9,8 +9,8 @@ const MESI=['Gennaio','Febbraio','Marzo','Aprile','Maggio','Giugno','Luglio','Ag
 export default function ChiusoPerMese({ contacts, stages }) {
   const curYear=new Date().getFullYear().toString();
   const wonStage=stages.filter(s=>!s.isKo).slice(-1)[0];
-  const closed=contacts.filter(c=>wonStage&&c.fase===wonStage.name&&c.contratto?.dataInizio);
-  const allYears=[...new Set(closed.map(c=>c.contratto.dataInizio.slice(0,4)))].sort().reverse();
+  const closed=contacts.filter(c=>wonStage&&c.fase===wonStage.name&&getDataChiusura(c));
+  const allYears=[...new Set(closed.map(c=>getDataChiusura(c).slice(0,4)))].sort().reverse();
   if(!allYears.includes(curYear)) allYears.unshift(curYear);
 
   const [year,setYear]=useState(curYear);
@@ -20,16 +20,18 @@ export default function ChiusoPerMese({ contacts, stages }) {
   const chartRef=useRef(null);
   const chartInst=useRef(null);
 
-  const yearClosed=closed.filter(c=>c.contratto.dataInizio.startsWith(year));
+  const yearClosed=closed.filter(c=>getDataChiusura(c).startsWith(year));
   const monthly=Array.from({length:12},(_,i)=>({month:i,label:MESI[i],contacts:[],value:0,count:0}));
+  // Use importoProposta as fallback when no contratto
+  const getValore = c => getImportoFatturato(c) || getImportoPreventivato(c);
   yearClosed.forEach(c=>{
-    const m=parseInt(c.contratto.dataInizio.slice(5,7))-1;
+    const m=parseInt(getDataChiusura(c).slice(5,7))-1;
     monthly[m].contacts.push(c);
-    monthly[m].value+=getImportoFatturato(c);
+    monthly[m].value+=getValore(c);
     monthly[m].count++;
   });
 
-  const totalVal=yearClosed.reduce((s,c)=>s+getImportoFatturato(c),0);
+  const totalVal=yearClosed.reduce((s,c)=>s+getValore(c),0);
   const activeMths=monthly.filter(m=>m.count>0);
   const bestMonth=monthly.reduce((best,m)=>m.value>best.value?m:best,monthly[0]);
   const avgMonth=activeMths.length?Math.round(totalVal/activeMths.length):0;
@@ -110,10 +112,10 @@ export default function ChiusoPerMese({ contacts, stages }) {
                     <tr key={c.id}>
                       <td className="fw-600">{c.nome}</td>
                       <td className="text-muted">{c.azienda||'—'}</td>
-                      <td className="text-muted">{fmtDate(c.contratto?.dataInizio,{day:'2-digit',month:'long',year:'numeric'})}</td>
+                      <td className="text-muted">{fmtDate(getDataChiusura(c),{day:'2-digit',month:'long',year:'numeric'})}</td>
                       <td className="text-muted">{c.contratto?.durataM?`${c.contratto.durataM} mesi`:'—'}</td>
                       <td className="text-muted fs-12">{(c.contratto?.prodotti||[]).map(p=>p.nome).join(', ')||'—'}</td>
-                      <td style={{fontWeight:700,color:'#3B6D11'}}>{fmtEur(getImportoFatturato(c))}</td>
+                      <td style={{fontWeight:700,color:'#3B6D11'}}>{fmtEur(getValore(c))}</td>
                     </tr>
                   ))}
                   <tr style={{background:'var(--bg3)'}}>

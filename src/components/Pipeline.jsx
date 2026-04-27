@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { fmtDate, getImportoPreventivato, getNextFu, getLastAppt } from '../data';
+import { fmtDate, getImportoPreventivato, getNextFu, getLastAppt, getDataChiusura } from '../data';
 import { FonteBadge, PropostaBadge } from './Badges';
 
 export default function Pipeline({ contacts, stages, setModal, setContacts, showToast }) {
@@ -66,9 +66,11 @@ export default function Pipeline({ contacts, stages, setModal, setContacts, show
           {activeStages.map(s=>{
             const cnt=contacts.filter(c=>c.fase===s.name).length;
             const val=contacts.filter(c=>c.fase===s.name).reduce((sum,c)=>sum+getImportoPreventivato(c),0);
+            const isWon=stages.filter(x=>!x.isKo).slice(-1)[0]?.name===s.name;
+            const curMonthLabel=new Date().toLocaleDateString('it-IT',{month:'long',year:'numeric'});
             return(
               <div key={s.id} style={{fontSize:11,fontWeight:700,textAlign:'center',paddingBottom:6,borderBottom:`3px solid ${s.color}`,color:s.color,textTransform:'uppercase',letterSpacing:'0.05em'}}>
-                {s.name} ({cnt}){val>0&&<div style={{fontWeight:400,fontSize:10,marginTop:2}}>€{val.toLocaleString('it-IT')}</div>}
+                {s.name} ({cnt}){isWon&&<div style={{fontWeight:400,fontSize:10,marginTop:1,opacity:0.8}}>{curMonthLabel}</div>}{val>0&&<div style={{fontWeight:400,fontSize:10,marginTop:2}}>€{val.toLocaleString('it-IT')}</div>}
               </div>
             );
           })}
@@ -77,7 +79,13 @@ export default function Pipeline({ contacts, stages, setModal, setContacts, show
         {/* Kanban */}
         <div style={{display:'grid',gridTemplateColumns:`repeat(${cols},1fr)`,gap:12,alignItems:'start'}}>
           {activeStages.map(s=>{
-            const stageContacts=sortContacts(contacts.filter(c=>c.fase===s.name));
+            const curMonth=new Date().toISOString().slice(0,7);
+            const isWonStage=stages.filter(x=>!x.isKo).slice(-1)[0]?.name===s.name;
+            const stageContacts=sortContacts(contacts.filter(c=>{
+              if(c.fase!==s.name) return false;
+              if(isWonStage) return getDataChiusura(c).startsWith(curMonth) || !getDataChiusura(c);
+              return true;
+            }));
             return(
               <div key={s.id} className="kanban-col">
                 <div className="kanban-header"><span>{s.name}</span><span className="kanban-count">{stageContacts.length}</span></div>

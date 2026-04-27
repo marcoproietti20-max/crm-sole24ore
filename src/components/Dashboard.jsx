@@ -1,6 +1,6 @@
 import React, { useEffect, useRef } from 'react';
 import { Chart, ArcElement, BarElement, BarController, DoughnutController, CategoryScale, LinearScale, Tooltip, Legend } from 'chart.js';
-import { fmtEur, fmtDate, FONTI, getImportoFatturato, getImportoPreventivato } from '../data';
+import { fmtEur, fmtDate, FONTI, getImportoFatturato, getImportoPreventivato, getDataChiusura } from '../data';
 import { FonteBadge, StageBadge } from './Badges';
 
 Chart.register(ArcElement, BarElement, BarController, DoughnutController, CategoryScale, LinearScale, Tooltip, Legend);
@@ -28,16 +28,14 @@ export default function Dashboard({ contacts, stages, today, navigateTo }) {
   // Current month fatturato
   const curMonth = new Date().toISOString().slice(0,7);
   const fatturatoCurMese = chiusiOK.filter(c => {
-    const d = c.contratto?.dataInizio || '';
-    return d.startsWith(curMonth);
-  }).reduce((s,c) => s + getImportoFatturato(c), 0);
+    return getDataChiusura(c).startsWith(curMonth);
+  }).reduce((s,c) => s + getImportoFatturato(c) + getImportoPreventivato(c), 0);
 
   // YTD fatturato
   const curYear = new Date().getFullYear().toString();
   const fatturatoAnno = chiusiOK.filter(c => {
-    const d = c.contratto?.dataInizio || '';
-    return d.startsWith(curYear);
-  }).reduce((s,c) => s + getImportoFatturato(c), 0);
+    return getDataChiusura(c).startsWith(curYear);
+  }).reduce((s,c) => s + getImportoFatturato(c) + getImportoPreventivato(c), 0);
 
   // Urgent follow-ups
   const urgentFU = contacts.reduce((n,c) =>
@@ -129,7 +127,7 @@ export default function Dashboard({ contacts, stages, today, navigateTo }) {
         {/* Metrics row 1 */}
         <div className="metric-grid" style={{marginBottom:12}}>
           <MetricCard label="Trattative aperte" value={openContacts.length} sub="in pipeline" onClick={()=>navigateTo('pipeline')}/>
-          <MetricCard label="Totale preventivato" value={fmtEur(totalPreventivato)} sub="trattative attive" onClick={()=>navigateTo('contacts',{fase:'aperto'})}/>
+          <MetricCard label="Totale preventivato" value={fmtEur(totalPreventivato)} sub="trattative attive" onClick={()=>navigateTo('contacts',{preventivato:true})}/>
           <MetricCard label="Fatturato mese" value={fmtEur(fatturatoCurMese)} sub={new Date().toLocaleDateString('it-IT',{month:'long',year:'numeric'})} color="#3B6D11" onClick={()=>navigateTo('chiuso')}/>
           <MetricCard label="Fatturato anno" value={fmtEur(fatturatoAnno)} sub={curYear} color="#3B6D11" onClick={()=>navigateTo('chiuso')}/>
         </div>

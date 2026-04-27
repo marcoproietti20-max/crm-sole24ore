@@ -109,6 +109,11 @@ export function getNextFu(c) {
   return fus[0] ? fus[0].followup : '';
 }
 export function getImportoPreventivato(c) { return Number(c.importoProposta)||0; }
+export function getDataChiusura(c) {
+  // Use explicit dataChiusura first, fall back to contratto.dataInizio
+  return c.dataChiusura || c.contratto?.dataInizio || '';
+}
+
 export function getImportoFatturato(c) {
   if (!c.contratto?.prodotti?.length) return Number(c.contratto?.totale)||0;
   return c.contratto.prodotti.reduce((s,p)=>s+(Number(p.importo)||0),0);

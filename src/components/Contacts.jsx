@@ -18,12 +18,15 @@ export default function Contacts({ contacts, stages, customFields, setModal, upd
   const [sortKey, setSortKey] = useState('');
   const [sortDir, setSortDir] = useState('asc');
 
+  const [filterPreventivato, setFilterPreventivato] = useState(false);
+
   // Apply pageFilter from dashboard navigation
   useEffect(() => {
     if (!pageFilter) return;
     if (pageFilter.fase) setFilterFase(pageFilter.fase === 'aperto' ? '' : pageFilter.fase);
     if (pageFilter.fonte) setFilterFonte(pageFilter.fonte);
     if (pageFilter.id) setSelectedCid(pageFilter.id);
+    if (pageFilter.preventivato) setFilterPreventivato(true);
     setPageFilter(null);
   }, [pageFilter]);
 
@@ -48,6 +51,7 @@ export default function Contacts({ contacts, stages, customFields, setModal, upd
       if (filterFonte&&c.fonte!==filterFonte) return false;
       if (filterProposta&&c.proposta!==filterProposta) return false;
       if (filterEsito&&c.esito!==filterEsito) return false;
+      if (filterPreventivato&&!(getImportoPreventivato(c)>0)) return false;
       return true;
     });
     if (sortKey) {
@@ -69,7 +73,7 @@ export default function Contacts({ contacts, stages, customFields, setModal, upd
       });
     }
     return list;
-  },[contacts,q,filterFase,filterFonte,filterProposta,filterEsito,sortKey,sortDir]);
+  },[contacts,q,filterFase,filterFonte,filterProposta,filterEsito,filterPreventivato,sortKey,sortDir]);
 
   const allChecked=filtered.length>0&&filtered.every(c=>selectedIds.has(c.id));
   const toggleOne=(id,checked)=>setSelectedIds(prev=>{const n=new Set(prev);checked?n.add(id):n.delete(id);return n;});
@@ -121,6 +125,7 @@ export default function Contacts({ contacts, stages, customFields, setModal, upd
             <option value="">Tutti gli esiti</option>
             {ESITI.map(e=><option key={e.name} value={e.name}>{e.name}</option>)}
           </select>
+          {filterPreventivato&&<button className="btn btn-sm btn-primary" onClick={()=>setFilterPreventivato(false)}>Con preventivo ×</button>}
         </div>
 
         {/* Bulk bar */}
