@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { fmtDate, getImportoPreventivato, getNextFu, getLastAppt } from '../data';
 import { FonteBadge, PropostaBadge } from './Badges';
 
-export default function Pipeline({ contacts, stages, setModal }) {
+export default function Pipeline({ contacts, stages, setModal, setContacts, showToast }) {
   const activeStages = stages.filter(s => !s.isKo);
   const [sortKey, setSortKey] = useState('nome');
   const [sortDir, setSortDir] = useState('asc');
@@ -46,7 +46,14 @@ export default function Pipeline({ contacts, stages, setModal }) {
             <span style={{fontSize:13,fontWeight:600,color:'#0C447C'}}>{selectedIds.size} selezionati</span>
             <div className="bulk-sep"/>
             <select className="form-control" style={{width:140,fontSize:12,padding:'4px 8px'}}
-              onChange={e=>{if(!e.target.value)return;/* bulk change fase */ e.target.value='';}}>
+              onChange={e=>{
+                if(!e.target.value) return;
+                const newFase = e.target.value;
+                setContacts(prev => prev.map(c => selectedIds.has(c.id) ? {...c, fase: newFase} : c));
+                showToast(`${selectedIds.size} contatti aggiornati`, newFase);
+                setSelectedIds(new Set());
+                e.target.value='';
+              }}>
               <option value="">Cambia fase...</option>
               {stages.map(s=><option key={s.id} value={s.name}>{s.name}</option>)}
             </select>
