@@ -182,3 +182,7 @@ export function buildDemoData() {
 
   return { contacts, deals };
 }
+export function getImportoFatturato(c) {
+  if (!c.contratto?.prodotti?.length) return Number(c.contratto?.totale)||0;
+  return c.contratto.prodotti.reduce((s,p)=>s+(Number(p.importo)||0),0);
+}
