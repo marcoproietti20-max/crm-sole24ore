@@ -103,7 +103,8 @@ export default function ChiusoPerMese({ contacts, stages }) {
                     <th>Azienda</th>
                     <Th k="data" label="Data inizio"/>
                     <Th k="durata" label="Durata"/>
-                    <th>Prodotti</th>
+                    <th>Categoria</th>
+                  <th>Prodotti</th>
                     <Th k="valore" label="Valore"/>
                   </tr>
                 </thead>
@@ -114,7 +115,8 @@ export default function ChiusoPerMese({ contacts, stages }) {
                       <td className="text-muted">{c.azienda||'—'}</td>
                       <td className="text-muted">{fmtDate(getDataChiusura(c),{day:'2-digit',month:'long',year:'numeric'})}</td>
                       <td className="text-muted">{c.contratto?.durataM?`${c.contratto.durataM} mesi`:'—'}</td>
-                      <td className="text-muted fs-12">{(c.contratto?.prodotti||[]).map(p=>p.nome).join(', ')||'—'}</td>
+                      <td className="text-muted fs-12">{(c.contratto?.prodotti||[]).map(p=>p.categoria).filter(Boolean).filter((v,i,a)=>a.indexOf(v)===i).join(', ')||'—'}</td>
+                      <td className="text-muted fs-12">{(c.contratto?.prodotti||[]).map(p=>p.nome).filter(Boolean).join(', ')||'—'}</td>
                       <td style={{fontWeight:700,color:'#3B6D11'}}>{fmtEur(getValore(c))}</td>
                     </tr>
                   ))}

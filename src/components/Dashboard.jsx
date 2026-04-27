@@ -10,8 +10,10 @@ const MESI_SHORT = ['Gen','Feb','Mar','Apr','Mag','Giu','Lug','Ago','Set','Ott',
 export default function Dashboard({ contacts, stages, today, navigateTo }) {
   const barRef = useRef(null);
   const doughRef = useRef(null);
-  const barChart = useRef(null);
+  const pieRef  = useRef(null);
+  const barChart  = useRef(null);
   const doughChart = useRef(null);
+  const pieChart  = useRef(null);
 
   const activeStages = stages.filter(s => !s.isKo);
   const wonStage = activeStages[activeStages.length - 1];
@@ -58,6 +60,21 @@ export default function Dashboard({ contacts, stages, today, navigateTo }) {
   activeStages.forEach(s => stageCnt[s.name] = 0);
   contacts.forEach(c => { if (stageCnt[c.fase] !== undefined) stageCnt[c.fase]++; });
 
+  // Prodotti aggregation for pie chart
+  const prodCat = {};
+  contacts.forEach(ct => {
+    (ct.contratto?.prodotti||[]).forEach(p => {
+      if (!p.categoria) return;
+      prodCat[p.categoria] = (prodCat[p.categoria]||0) + (Number(p.importo)||0);
+    });
+    // fallback: if chiuso OK with importo but no contratto prodotti
+    if (ct.fase===wonStage?.name && !ct.contratto?.prodotti?.length && getImportoPreventivato(ct)>0) {
+      prodCat['Non categorizzato'] = (prodCat['Non categorizzato']||0) + getImportoPreventivato(ct);
+    }
+  });
+  const prodCatLabels = Object.keys(prodCat).filter(k=>prodCat[k]>0);
+  const prodCatColors = ['#378ADD','#EF9F27','#7F77DD','#E07B1A','#639922','#c8102e','#0A66C2','#A32D2D','#3B6D11','#888','#F7C1C1'];
+
   // Fonte breakdown
   const fonteCnt = {};
   FONTI.forEach(f => fonteCnt[f.name] = 0);
@@ -80,8 +97,19 @@ export default function Dashboard({ contacts, stages, today, navigateTo }) {
       data:{labels:activeStages.map(s=>s.name),datasets:[{data:activeStages.map(s=>stageCnt[s.name]||0),backgroundColor:activeStages.map(s=>s.color),borderWidth:0}]},
       options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{position:'bottom',labels:{boxWidth:10,font:{size:11}}}}}
     });
-    return () => { barChart.current?.destroy(); doughChart.current?.destroy(); };
-  }, [contacts, stages]);
+    if (pieRef.current && prodCatLabels.length > 0) {
+      if (pieChart.current) pieChart.current.destroy();
+      pieChart.current = new Chart(pieRef.current, {
+        type: 'doughnut',
+        data: {
+          labels: prodCatLabels,
+          datasets: [{ data: prodCatLabels.map(k=>prodCat[k]), backgroundColor: prodCatColors.slice(0,prodCatLabels.length), borderWidth: 0 }]
+        },
+        options: { responsive:true, maintainAspectRatio:false, plugins: { legend: { position:'right', labels:{ boxWidth:10, font:{size:11}, padding:8 } }, tooltip: { callbacks: { label: ctx => ' '+fmtEur(ctx.parsed) } } } }
+      });
+    }
+    return () => { barChart.current?.destroy(); doughChart.current?.destroy(); pieChart.current?.destroy(); };
+  }, [contacts, stages, prodCatLabels.length]);
 
   // Urgent list
   const urgentList = [];
@@ -188,6 +216,14 @@ export default function Dashboard({ contacts, stages, today, navigateTo }) {
             ))
           }
         </div>
+
+        {/* Prodotti per categoria */}
+        {prodCatLabels.length > 0 && (
+          <div className="card">
+            <div className="card-title">Fatturato per categoria prodotto</div>
+            <div style={{position:'relative',height:220}}><canvas ref={pieRef}/></div>
+          </div>
+        )}
 
         {/* Fonte breakdown */}
         <div className="card card-0">

@@ -223,7 +223,7 @@ function ContrattoModal({contact,onSave,onClose}){
   const [dataInizio,setDataInizio]=useState(ct.dataInizio||'');
   const [durataM,setDurataM]=useState(ct.durataM||12);
 
-  const addProdotto=()=>setProdotti(p=>[...p,{id:genId(),nome:'',importo:0}]);
+  const addProdotto=()=>setProdotti(p=>[...p,{id:genId(),categoria:'',nome:'',importo:0}]);
   const updateProdotto=(id,k,v)=>setProdotti(p=>p.map(x=>x.id===id?{...x,[k]:v}:x));
   const removeProdotto=id=>setProdotti(p=>p.filter(x=>x.id!==id));
   const totale=prodotti.reduce((s,p)=>s+(Number(p.importo)||0),0);
@@ -246,14 +246,19 @@ function ContrattoModal({contact,onSave,onClose}){
           </div>
           {dataFine&&<div style={{fontSize:12,color:'var(--text2)',marginBottom:14}}>Data fine contratto: <strong>{fmtDate(dataFine)}</strong></div>}
           <div className="form-label" style={{marginBottom:8}}>Prodotti</div>
-          {prodotti.map(p=>(
-            <div key={p.id} style={{display:'flex',gap:8,marginBottom:8,alignItems:'center'}}>
-              <select className="form-control" style={{flex:2}} value={p.nome} onChange={e=>updateProdotto(p.id,'nome',e.target.value)}>
-                <option value="">— seleziona prodotto —</option>
-                {PRODOTTI.map(pr=><option key={pr} value={pr}>{pr}</option>)}
-              </select>
-              <input className="form-control" style={{flex:1}} type="number" placeholder="€" value={p.importo} onChange={e=>updateProdotto(p.id,'importo',e.target.value)}/>
-              <button className="btn btn-sm btn-danger" onClick={()=>removeProdotto(p.id)}>×</button>
+          {prodotti.length===0&&<div style={{fontSize:12,color:'var(--text3)',marginBottom:8}}>Nessun prodotto. Clicca "+ Aggiungi prodotto".</div>}
+          {prodotti.map((p,i)=>(
+            <div key={p.id} style={{background:'var(--bg3)',borderRadius:'var(--radius)',padding:'10px 12px',marginBottom:8}}>
+              <div style={{display:'flex',gap:8,marginBottom:6,alignItems:'center'}}>
+                <span style={{fontSize:11,fontWeight:600,color:'var(--text2)',minWidth:20}}>#{i+1}</span>
+                <select className="form-control" style={{flex:2}} value={p.categoria||''} onChange={e=>updateProdotto(p.id,'categoria',e.target.value)}>
+                  <option value="">— categoria —</option>
+                  {PRODOTTI.map(pr=><option key={pr} value={pr}>{pr}</option>)}
+                </select>
+                <input className="form-control" style={{flex:2}} type="text" placeholder="Nome prodotto (es. SoleLex, Corso...)" value={p.nome||''} onChange={e=>updateProdotto(p.id,'nome',e.target.value)}/>
+                <input className="form-control" style={{flex:1}} type="number" placeholder="€" value={p.importo} onChange={e=>updateProdotto(p.id,'importo',e.target.value)}/>
+                <button className="btn btn-sm btn-danger" onClick={()=>removeProdotto(p.id)}>×</button>
+              </div>
             </div>
           ))}
           <button className="btn btn-sm" onClick={addProdotto} style={{marginBottom:14}}>+ Aggiungi prodotto</button>
