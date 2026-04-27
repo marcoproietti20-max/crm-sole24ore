@@ -8,7 +8,10 @@ export default function Appointments({ contacts, stages, setModal }) {
 
   const events = useMemo(() => {
     const list = [];
+    const koStageNames = stages.filter(s => s.isKo).map(s => s.name);
     contacts.forEach(c => {
+      // Skip contacts in KO stages
+      if (koStageNames.includes(c.fase)) return;
       (c.history || []).filter(h => h.type === 'appt' && h.date).forEach(h => {
         list.push({ contact: c, appt: h, date: h.date.split('T')[0], time: h.date.includes('T') ? h.date.split('T')[1]?.slice(0,5) : '', stato: h.stato || 'Svolto' });
       });
